@@ -1,0 +1,39 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2026-01-15T10:30:00Z",
+  "environment": "development",
+  "options": {
+    "enableLogging": true,
+    "enableExpiration": false,
+    "defaultAction": "deny"
+  },
+  "allowedIps": [
+    {
+      "ip": "192.168.1.100",
+      "description": "Oficina Principal - RRHH",
+      "department": "Recursos Humanos",
+      "employeeId": "EMP-001"
+    },
+    {
+      "ip": "10.0.0.50",
+      "description": "VPN - Reclutador",
+      "department": "Recursos Humanos",
+      "employeeId": "EMP-002"
+    },
+    {
+      "ip": "192.168.1.0/24",
+      "description": "Rango oficina principal",
+      "department": "Todas"
+    },
+    {
+      "ip": "10.0.0.0/8",
+      "description": "Rango interno",
+      "department": "Todas"
+    },
+    {
+      "ip": "127.0.0.1",
+      "description": "Localhost - Desarrollo",
+      "department": "Desarrollo"
+    }
+  ]
+}

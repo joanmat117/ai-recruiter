@@ -27,24 +27,24 @@ Chain strategy: feature-branch-chain
 
 ## Phase 1: Foundation (Dependencies, Config, Common, Data)
 
-- [ ] 1.1 Install npm dependencies: `npm install @nestjs/config class-validator class-transformer pdf-parse chromadb @langchain/openai @langchain/core multer ip-cidr && npm install -D @types/multer`
-- [ ] 1.2 Create `src/config/configuration.ts` — app config factory (port, cors, nodeEnv) using `registerAs`
-- [ ] 1.3 Create `src/config/llm.config.ts` — LLM config: provider, apiKeys, model, temperature, maxTokens via `registerAs('llm')`
-- [ ] 1.4 Create `src/config/langgraph.config.ts` — ChromaDB URL, collection prefix via `registerAs('langgraph')`
-- [ ] 1.5 Generate common module: `nest g module common --no-spec`
-- [ ] 1.6 Create `src/common/interfaces/whitelist.interface.ts` — WhitelistEntry, WhitelistConfig, WhitelistMetadata
-- [ ] 1.7 Create `src/common/enums/llm-provider.enum.ts` — OPENAI, OPENROUTER, GEMINI
-- [ ] 1.8 Create `src/common/dto/evaluate-candidate.dto.ts` — jobDescription (string, required), llmProvider (enum, optional)
-- [ ] 1.9 Create `src/common/dto/job-description.dto.ts` — DTO for compare/questions endpoints
-- [ ] 1.10 Create `src/common/services/whitelist.service.ts` — JSON load, CIDR check (ip-cidr), cache, fs.watch hot-reload, error fallback
-- [ ] 1.11 Create `src/common/guards/ip-whitelist.guard.ts` — CanActivate: extract IP (x-forwarded-for → x-real-ip → socket), check WhitelistService, inject metadata, audit log
-- [ ] 1.12 Create `src/common/filters/global-exception.filter.ts` — HttpExceptionFilter wrapping errors in { statusCode, message, error, code? }
-- [ ] 1.13 Create `src/common/interceptors/response-transform.interceptor.ts` — map responses to { success: true, data } envelope
-- [ ] 1.14 Update `src/common/common.module.ts` — export WhitelistService, register guard
-- [ ] 1.15 Create `src/data/ip-whitelist.json` — example entries: 192.168.1.100, 10.0.0.0/8, 172.16.0.0/12
-- [ ] 1.16 Create `.env.example` — all env vars with descriptions and defaults
-- [ ] 1.17 Update `src/app.module.ts` — import ConfigModule (global), EventEmitterModule, CommonModule
-- [ ] 1.18 Update `src/main.ts` — global guard (IpWhitelistGuard), ValidationPipe (whitelist, forbidNonWhitelisted), CORS, global prefix `/api`
+- [x] 1.1 Install npm dependencies: `npm install @nestjs/config class-validator class-transformer pdf-parse chromadb @langchain/openai @langchain/core multer ip-cidr && npm install -D @types/multer`
+- [x] 1.2 Create `src/config/configuration.ts` — app config factory (port, cors, nodeEnv) using `registerAs`
+- [x] 1.3 Create `src/config/llm.config.ts` — LLM config: provider, apiKeys, model, temperature, maxTokens via `registerAs('llm')`
+- [x] 1.4 Create `src/config/langgraph.config.ts` — ChromaDB URL, collection prefix via `registerAs('langgraph')`
+- [x] 1.5 Generate common module: `nest g module common --no-spec`
+- [x] 1.6 Create `src/common/interfaces/whitelist.interface.ts` — WhitelistEntry, WhitelistConfig, WhitelistMetadata
+- [x] 1.7 Create `src/common/enums/llm-provider.enum.ts` — OPENAI, OPENROUTER, GEMINI
+- [x] 1.8 Create `src/common/dto/evaluate-candidate.dto.ts` — jobDescription (string, required), llmProvider (enum, optional)
+- [x] 1.9 Create `src/common/dto/job-description.dto.ts` — DTO for compare/questions endpoints
+- [x] 1.10 Create `src/common/services/whitelist.service.ts` — JSON load, CIDR check (ip-cidr), cache, fs.watch hot-reload, error fallback
+- [x] 1.11 Create `src/common/guards/ip-whitelist.guard.ts` — CanActivate: extract IP (x-forwarded-for → x-real-ip → socket), check WhitelistService, inject metadata, audit log
+- [x] 1.12 Create `src/common/filters/global-exception.filter.ts` — HttpExceptionFilter wrapping errors in { statusCode, message, error, code? }
+- [x] 1.13 Create `src/common/interceptors/response-transform.interceptor.ts` — map responses to { success: true, data } envelope
+- [x] 1.14 Update `src/common/common.module.ts` — export WhitelistService, register guard
+- [x] 1.15 Create `src/data/ip-whitelist.json` — example entries: 192.168.1.100, 10.0.0.0/8, 172.16.0.0/12
+- [x] 1.16 Create `.env.example` — all env vars with descriptions and defaults
+- [x] 1.17 Update `src/app.module.ts` — import ConfigModule (global), EventEmitterModule, CommonModule
+- [x] 1.18 Update `src/main.ts` — global guard (IpWhitelistGuard), ValidationPipe (whitelist, forbidNonWhitelisted), CORS, global prefix `/api`
 
 ## Phase 2: LLM Abstraction + Recruiter Tools
 
