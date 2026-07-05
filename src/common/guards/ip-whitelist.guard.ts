@@ -18,7 +18,7 @@ export class IpWhitelistGuard implements CanActivate {
 
     this.logger.log(`IP access attempt from: ${ip}`);
 
-    if (!this.whitelistService.isAllowed(ip)) {
+    if (!this.whitelistService.isAllowed(ip).allowed) {
       this.logger.warn(`IP denied: ${ip}`);
       throw new ForbiddenException({
         statusCode: 403,

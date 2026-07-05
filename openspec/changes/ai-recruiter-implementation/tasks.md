@@ -69,29 +69,29 @@ Chain strategy: feature-branch-chain
 
 ## Phase 4: LangGraph Placeholders + Root Integration
 
-- [ ] 4.1 Create `src/agents/recruiter/graph/recruiter.graph.ts` — StateGraph definition with 5 nodes, conditional edges, TODO comments for implementation
-- [ ] 4.2 Create `src/agents/recruiter/nodes/parser.node.ts` — placeholder: returns state unchanged, TODO block describing text normalization + section detection
-- [ ] 4.3 Create `src/agents/recruiter/nodes/analyzer.node.ts` — placeholder: returns state unchanged, TODO block describing LLM skill/experience analysis
-- [ ] 4.4 Create `src/agents/recruiter/nodes/matcher.node.ts` — placeholder: returns state unchanged, TODO block describing ChromaDB embedding lookup + cosine similarity
-- [ ] 4.5 Create `src/agents/recruiter/nodes/scorer.node.ts` — placeholder: returns state unchanged, TODO block describing weighted scoring + threshold routing
-- [ ] 4.6 Create `src/agents/recruiter/nodes/feedback.node.ts` — placeholder: returns state unchanged, TODO block describing LLM feedback generation
-- [ ] 4.7 Update `src/app.module.ts` — add RecruiterModule to imports (final wiring)
+- [x] 4.1 Create `src/agents/recruiter/graph/recruiter.graph.ts` — StateGraph definition with 5 nodes, conditional edges, TODO comments for implementation
+- [x] 4.2 Create `src/agents/recruiter/nodes/parser.node.ts` — placeholder: returns state unchanged, TODO block describing text normalization + section detection
+- [x] 4.3 Create `src/agents/recruiter/nodes/analyzer.node.ts` — placeholder: returns state unchanged, TODO block describing LLM skill/experience analysis
+- [x] 4.4 Create `src/agents/recruiter/nodes/matcher.node.ts` — placeholder: returns state unchanged, TODO block describing ChromaDB embedding lookup + cosine similarity
+- [x] 4.5 Create `src/agents/recruiter/nodes/scorer.node.ts` — placeholder: returns state unchanged, TODO block describing weighted scoring + threshold routing
+- [x] 4.6 Create `src/agents/recruiter/nodes/feedback.node.ts` — placeholder: returns state unchanged, TODO block describing LLM feedback generation
+- [x] 4.7 Update `src/app.module.ts` — add RecruiterModule to imports (final wiring)
 
 ## Phase 5: Tests
 
-- [ ] 5.1 Write unit test `src/common/services/whitelist.service.spec.ts` — mock fs, test exact IP match, CIDR range match/miss, missing file fallback, hot-reload
-- [ ] 5.2 Write unit test `src/common/guards/ip-whitelist.guard.spec.ts` — mock WhitelistService, test IP extraction order, metadata injection, 403 on deny
-- [ ] 5.3 Write unit test `src/modules/llm/llm.service.spec.ts` — mock factory, test primary success, fallback on failure, all-fail exception, retry count
-- [ ] 5.4 Write unit test `src/agents/recruiter/tools/pdf-extractor.tool.spec.ts` — mock pdf-parse, test text extraction, scanned PDF error, corrupted PDF error
-- [ ] 5.5 Write unit test `src/agents/recruiter/tools/skill-extractor.tool.spec.ts` — mock LlmService, test skill classification, empty text handling
-- [ ] 5.6 Write unit test `src/agents/recruiter/tools/job-matcher.tool.spec.ts` — mock ChromaDB, test similarity scoring, gap identification, department isolation
-- [ ] 5.7 Write integration test `src/agents/recruiter/services/recruiter.service.spec.ts` — mock all tools, test evaluateCandidate full flow, evaluateBatch, compareCandidates
-- [ ] 5.8 Write integration test `src/agents/recruiter/controllers/recruiter.controller.spec.ts` — supertest with mocked service, test all 6 endpoints including file upload validation
+- [x] 5.1 Write unit test `src/common/services/whitelist.service.spec.ts` — mock fs, test exact IP match, CIDR range match/miss, missing file fallback, hot-reload
+- [x] 5.2 Write unit test `src/common/guards/ip-whitelist.guard.spec.ts` — mock WhitelistService, test IP extraction order, metadata injection, 403 on deny
+- [x] 5.3 Write unit test `src/modules/llm/llm.service.spec.ts` — mock factory, test primary success, fallback on failure, all-fail exception, retry count
+- [x] 5.4 Write unit test `src/agents/recruiter/tools/pdf-extractor.tool.spec.ts` — mock pdf-parse, test text extraction, scanned PDF error, corrupted PDF error
+- [x] 5.5 Write unit test `src/agents/recruiter/tools/skill-extractor.tool.spec.ts` — mock LlmService, test skill classification, empty text handling
+- [x] 5.6 Write unit test `src/agents/recruiter/tools/job-matcher.tool.spec.ts` — mock ChromaDB, test similarity scoring, gap identification, department isolation
+- [x] 5.7 Write integration test `src/agents/recruiter/services/recruiter.service.spec.ts` — mock all tools, test evaluateCandidate full flow, evaluateBatch, compareCandidates
+- [x] 5.8 Write integration test `src/agents/recruiter/controllers/recruiter.controller.spec.ts` — supertest with mocked service, test all 6 endpoints including file upload validation
 
 ## Verification
 
-- [ ] V.1 `npm run build` — zero TypeScript errors
-- [ ] V.2 `npm test` — all unit + integration tests pass
+- [x] V.1 `npm run build` — zero TypeScript errors
+- [x] V.2 `npm test` — all unit + integration tests pass
 - [ ] V.3 Start app (`npm run start:dev`) — verify boot without crash
 - [ ] V.4 Test IP guard: curl from allowed/denied IP, verify 200/403
 - [ ] V.5 Test endpoints: POST /api/recruiter/evaluate with sample PDF + jobDescription, verify 201 response structure

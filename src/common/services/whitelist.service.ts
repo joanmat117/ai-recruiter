@@ -68,16 +68,16 @@ export class WhitelistService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  isAllowed(ip: string): boolean {
+  isAllowed(ip: string): { allowed: boolean } {
     if (!this.whitelist || !this.whitelist.allowedIps) {
       this.logger.warn('Whitelist not loaded, denying access');
-      return false;
+      return { allowed: false };
     }
 
     // Check cache first
     const cached = this.getCachedResult(ip);
     if (cached !== undefined) {
-      return cached !== null;
+      return { allowed: cached !== null };
     }
 
     // Check against whitelist
@@ -89,12 +89,12 @@ export class WhitelistService implements OnModuleInit, OnModuleDestroy {
           employeeId: entry.employeeId,
           description: entry.description,
         });
-        return true;
+        return { allowed: true };
       }
     }
 
     this.setCachedResult(ip, null);
-    return false;
+    return { allowed: false };
   }
 
   getMetadata(ip: string): WhitelistMetadata | null {
