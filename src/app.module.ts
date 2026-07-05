@@ -4,6 +4,8 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { CommonModule } from './common/common.module';
+import { LlmModule } from './modules/llm/llm.module';
+import { RecruiterModule } from './agents/recruiter/recruiter.module';
 import configuration from './config/configuration';
 import llmConfig from './config/llm.config';
 import langgraphConfig from './config/langgraph.config';
@@ -16,6 +18,8 @@ import langgraphConfig from './config/langgraph.config';
     }),
     EventEmitterModule.forRoot(),
     CommonModule,
+    LlmModule,
+    RecruiterModule,
   ],
   controllers: [AppController],
   providers: [AppService],
