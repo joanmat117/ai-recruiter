@@ -1,4 +1,4 @@
-export enum LlmProvider {
+export enum LlmProviders {
   OPENAI = 'openai',
   OPENROUTER = 'openrouter',
   GEMINI = 'gemini',

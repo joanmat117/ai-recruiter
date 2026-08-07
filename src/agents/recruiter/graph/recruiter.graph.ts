@@ -1,4 +1,6 @@
 import { StateGraph, Annotation } from '@langchain/langgraph';
+import { RecruiterInputAnnotation, RecruiterOutputAnnotation, RecruiterState, RecruiterStateAnnotation } from '../state/recruiter.state';
+import { StateSteps } from '../types/recruiter-state.type';
 
 /**
  * Recruiter Graph — Multi-agent pipeline for candidate evaluation
@@ -17,35 +19,23 @@ import { StateGraph, Annotation } from '@langchain/langgraph';
  * TODO: Integrate with ChromaDB for vector search
  */
 
-// Define the state annotation for the graph
-const RecruiterStateAnnotation = Annotation.Root({
-  cvText: Annotation<string>,
-  jobDescription: Annotation<string>,
-  candidateSkills: Annotation<{ hard: string[]; soft: string[]; tools: string[] }>,
-  requiredSkills: Annotation<string[]>,
-  skillMatch: Annotation<{ matched: string[]; missing: string[]; matchPercentage: number }>,
-  scores: Annotation<{ overall: number; skills: number; experience: number; education: number }>,
-  recommendation: Annotation<string>,
-  interviewQuestions: Annotation<string[]>,
-  feedbackForCandidate: Annotation<string>,
-  currentStep: Annotation<string>,
-  errors: Annotation<string[]>,
-});
-
 // Placeholder node functions — implement with actual logic
-function parserNode(state: any) {
+function parserNode(state: RecruiterState): Partial<RecruiterState> {
   // TODO: Extract and normalize CV text
   // - Use pdf-parse to extract text
   // - Clean and normalize whitespace
   // - Detect sections (education, experience, skills)
-  console.log('[parser] Parsing CV text...');
+
+
+
+
   return {
     cvText: state.cvText,
-    currentStep: 'analyzing',
+    currentStep: StateSteps.Analyzing,
   };
 }
 
-function analyzerNode(state: any) {
+function analyzerNode(state: RecruiterState): Partial<RecruiterState> {
   // TODO: Analyze job description
   // - Extract required skills using LLM
   // - Parse years of experience requirement
@@ -53,11 +43,11 @@ function analyzerNode(state: any) {
   console.log('[analyzer] Analyzing job description...');
   return {
     requiredSkills: [],
-    currentStep: 'matching',
+    currentStep: StateSteps.Matching,
   };
 }
 
-function matcherNode(state: any) {
+function matcherNode(state: RecruiterState): Partial<RecruiterState> {
   // TODO: Match candidate against job requirements
   // - Use ChromaDB embeddings for semantic matching
   // - Calculate cosine similarity
@@ -65,11 +55,11 @@ function matcherNode(state: any) {
   console.log('[matcher] Matching skills...');
   return {
     skillMatch: { matched: [], missing: [], matchPercentage: 0 },
-    currentStep: 'scoring',
+    currentStep: StateSteps.Scoring,
   };
 }
 
-function scorerNode(state: any) {
+function scorerNode(state: RecruiterState, config): Partial<RecruiterState> {
   // TODO: Calculate compatibility scores
   // - Weighted scoring (skills 50%, experience 30%, education 20%)
   // - Generate recommendation based on threshold
@@ -78,11 +68,11 @@ function scorerNode(state: any) {
   return {
     scores: { overall: 0, skills: 0, experience: 0, education: 0 },
     recommendation: 'consider',
-    currentStep: 'feedback',
+    currentStep: StateSteps.Feedback,
   };
 }
 
-function feedbackNode(state: any) {
+function feedbackNode(state: RecruiterState): Partial<RecruiterState> {
   // TODO: Generate feedback and interview questions
   // - Use LLM to generate personalized feedback
   // - Generate relevant interview questions
@@ -91,12 +81,15 @@ function feedbackNode(state: any) {
   return {
     interviewQuestions: [],
     feedbackForCandidate: '',
-    currentStep: 'complete',
+    currentStep: StateSteps.Complete,
   };
 }
 
 // Create the graph
-const workflow = new StateGraph(RecruiterStateAnnotation)
+const workflow = new StateGraph(RecruiterStateAnnotation, {
+  input: RecruiterInputAnnotation,
+  output: RecruiterOutputAnnotation
+})
   .addNode('parser', parserNode)
   .addNode('analyzer', analyzerNode)
   .addNode('matcher', matcherNode)

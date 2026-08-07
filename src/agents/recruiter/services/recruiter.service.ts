@@ -5,127 +5,28 @@ import { SkillExtractorTool } from '../tools/skill-extractor.tool';
 import { JobMatcherTool } from '../tools/job-matcher.tool';
 import { LlmProviderTool } from '../tools/llm-provider.tool';
 import { RecruiterState } from '../state/recruiter.state';
+import recruiterGraph from '../graph/recruiter.graph';
 
 @Injectable()
 export class RecruiterService {
   private readonly logger = new Logger(RecruiterService.name);
   private readonly jobStatuses: Map<string, RecruiterState> = new Map();
 
-  constructor(
-    private readonly configService: ConfigService,
-    private readonly pdfExtractor: PdfExtractorTool,
-    private readonly skillExtractor: SkillExtractorTool,
-    private readonly jobMatcher: JobMatcherTool,
-    private readonly llmProvider: LlmProviderTool,
-  ) {}
-
   async evaluateCandidate(
     cvBuffer: Buffer,
     jobDescription: string,
-    jobTitle?: string,
+    jobTitle: string,
     llmProvider?: string,
   ): Promise<RecruiterState> {
-    const startTime = Date.now();
-    const jobId = this.generateJobId();
-
     this.logger.log(`Starting candidate evaluation: ${jobId}`);
 
-    const initialState: RecruiterState = {
+
+    recruiterGraph.invoke({
       cvBuffer,
       jobDescription,
       jobTitle,
-      candidateSkills: { hard: [], soft: [], tools: [] },
-      candidateExperience: { years: 0, summary: '', companies: [], roles: [] },
-      candidateEducation: [],
-      candidateLanguages: [],
-      candidateCertifications: [],
-      requiredSkills: [],
-      preferredSkills: [],
-      yearsExperienceRequired: 0,
-      educationRequired: '',
-      industryKeywords: [],
-      skillMatch: { matched: [], missing: [], matchPercentage: 0 },
-      experienceMatch: { meetsRequirement: false, yearsMatch: 0, relevanceScore: 0 },
-      educationMatch: { meetsRequirement: false, relevancyScore: 0 },
-      scores: { overall: 0, skills: 0, experience: 0, education: 0 },
-      recommendation: 'reject',
-      confidenceLevel: 0,
-      reasoning: '',
-      strengths: [],
-      weaknesses: [],
-      redFlags: [],
-      greenFlags: [],
-      interviewQuestions: [],
-      feedbackForCandidate: '',
-      currentStep: 'parsing',
-      errors: [],
-      warnings: [],
-      processingTime: 0,
-      timestamp: new Date(),
-      llmProvider: (llmProvider as any) || this.configService.get('llm.provider', 'openai'),
-    };
-
-    try {
-      // Step 1: Extract CV text
-      this.logger.log(`[${jobId}] Parsing CV...`);
-      const extraction = await this.pdfExtractor.extractText(cvBuffer);
-      initialState.cvText = extraction.text;
-      initialState.currentStep = 'analyzing';
-
-      // Step 2: Extract skills
-      this.logger.log(`[${jobId}] Extracting skills...`);
-      const skills = await this.skillExtractor.extractSkills(extraction.text);
-      initialState.candidateSkills = skills;
-      initialState.currentStep = 'matching';
-
-      // Step 3: Parse job description
-      this.logger.log(`[${jobId}] Analyzing job description...`);
-      const jobAnalysis = await this.analyzeJobDescription(jobDescription);
-      initialState.requiredSkills = jobAnalysis.requiredSkills;
-      initialState.preferredSkills = jobAnalysis.preferredSkills;
-      initialState.yearsExperienceRequired = jobAnalysis.yearsExperienceRequired;
-      initialState.educationRequired = jobAnalysis.educationRequired;
-
-      // Step 4: Match skills
-      this.logger.log(`[${jobId}] Matching skills...`);
-      const allCandidateSkills = [
-        ...skills.hard,
-        ...skills.soft,
-        ...skills.tools,
-      ];
-      const skillMatch = await this.jobMatcher.matchSkills(allCandidateSkills, jobAnalysis.requiredSkills);
-      initialState.skillMatch = skillMatch;
-
-      // Step 5: Calculate scores
-      this.logger.log(`[${jobId}] Calculating scores...`);
-      const scoreComponents = {
-        skills: skillMatch.matchPercentage,
-        experience: 70, // Placeholder - would need experience parsing
-        education: 80,  // Placeholder - would need education parsing
-      };
-      const overallScore = this.jobMatcher.calculateOverallScore(scoreComponents);
-      initialState.scores = {
-        overall: overallScore,
-        skills: scoreComponents.skills,
-        experience: scoreComponents.experience,
-        education: scoreComponents.education,
-      };
-
-      // Step 6: Generate recommendation
-      initialState.recommendation = this.generateRecommendation(initialState.scores.overall);
-      initialState.confidenceLevel = this.calculateConfidence(initialState);
-      initialState.currentStep = 'complete';
-
-    } catch (error) {
-      this.logger.error(`[${jobId}] Evaluation failed: ${error.message}`);
-      initialState.currentStep = 'error';
-      initialState.errors.push(error.message);
-    }
-
-    initialState.processingTime = Date.now() - startTime;
-    this.jobStatuses.set(jobId, initialState);
-
-    return initialState;
+    }, {
+    })
   }
 
   async evaluateBatch(
