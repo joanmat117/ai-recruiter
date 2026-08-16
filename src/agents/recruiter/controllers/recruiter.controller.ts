@@ -18,7 +18,7 @@ import { CompareCandidatesDto, InterviewQuestionsDto, FeedbackDto } from '../../
 
 @Controller('recruiter')
 export class RecruiterController {
-  constructor(private readonly recruiterService: RecruiterService) {}
+  constructor(private readonly recruiterService: RecruiterService) { }
 
   @Post('evaluate')
   @HttpCode(HttpStatus.CREATED)
@@ -27,7 +27,6 @@ export class RecruiterController {
     @UploadedFile() file: Express.Multer.File,
     @Body('jobDescription') jobDescription: string,
     @Body('jobTitle') jobTitle?: string,
-    @Body('llmProvider') llmProvider?: string,
   ) {
     if (!file) {
       throw new BadRequestException('CV file is required');
@@ -38,10 +37,8 @@ export class RecruiterController {
     }
 
     const result = await this.recruiterService.evaluateCandidate(
-      file.buffer,
       jobDescription,
       jobTitle,
-      llmProvider,
     );
 
     return result;

@@ -5,6 +5,7 @@ import { LlmProviders } from 'src/common/enums/llm-provider.enum';
 import { ChatOpenAI } from "@langchain/openai"
 import { ChatOpenRouter } from "@langchain/openrouter"
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai"
+import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 
 @Injectable()
 export class LlmProviderFactory {
@@ -23,16 +24,25 @@ export class LlmProviderFactory {
     }
   }
 
-  private createOpenAiProvider() {
-    // Will use @langchain/openai ChatOpenAI
+  private createOpenAiProvider(): BaseChatModel {
+    return new ChatOpenAI({
+      apiKey: this.configService.get<string>('OPENAI_API_KEY'),
+      model: this.configService.get<string>('OPENAI_MODEL') || 'gpt-4o'
+    })
   }
 
-  private createOpenRouterProvider() {
-    // Will use OpenRouter-compatible API
-    return ChatOpenRouter
+  private createOpenRouterProvider(): BaseChatModel {
+    return new ChatOpenRouter({
+      apiKey: this.configService.get<string>('OPENROUTER_API_KEY'),
+      model: this.configService.get<string>('OPENROUTER_MODEL') || 'gpt-4o-mini'
+    })
   }
 
-  private createGeminiProvider() {
+  private createGeminiProvider(): BaseChatModel {
+    return new ChatGoogleGenerativeAI({
+      apiKey: this.configService.get<string>('GEMINI_API_KEY'),
+      model: this.configService.get<string>('GEMINI_MODEL') || 'gemini-1.5-turbo'
+    })
 
   }
 }

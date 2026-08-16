@@ -1,32 +1,41 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { PdfExtractorTool } from '../tools/pdf-extractor.tool';
-import { SkillExtractorTool } from '../tools/skill-extractor.tool';
-import { JobMatcherTool } from '../tools/job-matcher.tool';
-import { LlmProviderTool } from '../tools/llm-provider.tool';
-import { RecruiterState } from '../state/recruiter.state';
+import { RecruiterOutput, RecruiterState } from '../state/recruiter.state';
 import recruiterGraph from '../graph/recruiter.graph';
+import { LlmProviderFactory } from 'src/modules/llm/llm-provider.factory';
+import { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class RecruiterService {
   private readonly logger = new Logger(RecruiterService.name);
   private readonly jobStatuses: Map<string, RecruiterState> = new Map();
+  private readonly llmProvider: BaseChatModel
+
+  constructor(
+    private readonly llmProviderFactory: LlmProviderFactory,
+    private readonly configService: ConfigService
+  ) {
+    this.llmProvider = this.llmProviderFactory.createProvider(
+      this.configService.get<string>('LLM_PROVIDER') || 'openai'
+    );
+
+  }
 
   async evaluateCandidate(
-    cvBuffer: Buffer,
     jobDescription: string,
     jobTitle: string,
-    llmProvider?: string,
-  ): Promise<RecruiterState> {
-    this.logger.log(`Starting candidate evaluation: ${jobId}`);
+  ): Promise<RecruiterOutput> {
 
-
-    recruiterGraph.invoke({
-      cvBuffer,
+    const result = await recruiterGraph.invoke({
       jobDescription,
       jobTitle,
     }, {
+      configurable: {
+        llm: this.llmProvider
+      }
     })
+
+    return result
   }
 
   async evaluateBatch(
@@ -102,48 +111,6 @@ export class RecruiterService {
 
   getJobStatus(jobId: string): RecruiterState | undefined {
     return this.jobStatuses.get(jobId);
-  }
-
-  private async analyzeJobDescription(jobDescription: string) {
-    // Simple parsing - in production would use LLM
-    return {
-      requiredSkills: this.extractSkillsFromText(jobDescription),
-      preferredSkills: [],
-      yearsExperienceRequired: this.extractYearsFromText(jobDescription),
-      educationRequired: this.extractEducationFromText(jobDescription),
-    };
-  }
-
-  private extractSkillsFromText(text: string): string[] {
-    const skillKeywords = ['javascript', 'typescript', 'python', 'java', 'react', 'node', 'nestjs', 'angular', 'vue', 'docker', 'kubernetes', 'aws', 'azure', 'gcp', 'sql', 'mongodb', 'postgresql', 'redis', 'graphql', 'rest', 'api'];
-    return skillKeywords.filter(skill => text.toLowerCase().includes(skill));
-  }
-
-  private extractYearsFromText(text: string): number {
-    const match = text.match(/(\d+)\+?\s*years?/i);
-    return match ? parseInt(match[1]) : 3;
-  }
-
-  private extractEducationFromText(text: string): string {
-    if (text.toLowerCase().includes('bachelor')) return 'Bachelor\'s degree';
-    if (text.toLowerCase().includes('master')) return 'Master\'s degree';
-    if (text.toLowerCase().includes('phd')) return 'PhD';
-    return 'Any';
-  }
-
-  private generateRecommendation(score: number): RecruiterState['recommendation'] {
-    if (score >= 85) return 'strong_hire';
-    if (score >= 70) return 'hire';
-    if (score >= 50) return 'consider';
-    return 'reject';
-  }
-
-  private calculateConfidence(state: RecruiterState): number {
-    let confidence = 0.5;
-    if (state.cvText && state.cvText.length > 100) confidence += 0.2;
-    if (state.candidateSkills.hard.length > 0) confidence += 0.1;
-    if (state.skillMatch.matchPercentage > 0) confidence += 0.1;
-    return Math.min(confidence, 1);
   }
 
   private generateJobId(): string {

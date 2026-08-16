@@ -13,10 +13,16 @@
  * TODO: Handle partial skill matches
  * TODO: Support department-based collection isolation
  */
-export function matcherNode(state: any) {
+import { RunnableConfig } from '@langchain/core/runnables';
+import { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { RecruiterState } from '../state/recruiter.state';
+import { StateSteps } from '../types/recruiter-state.type';
+
+export function matcherNode(state: RecruiterState, config: RunnableConfig): Partial<RecruiterState> {
+  const llm = config.configurable?.llm as BaseChatModel;
   console.log('[matcher] TODO: Implement skill matching with ChromaDB');
   return {
     skillMatch: { matched: [], missing: [], matchPercentage: 0 },
-    currentStep: 'scoring',
+    currentStep: StateSteps.Scoring,
   };
 }

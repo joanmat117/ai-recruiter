@@ -14,7 +14,6 @@ const append = <T>(left: T[], right: T[]): T[] => [...left, ...right];
  */
 export const RecruiterStateAnnotation = Annotation.Root({
   // ===== INPUT =====
-  cvBuffer: Annotation<Buffer>,
   cvText: Annotation<string>,
   jobDescription: Annotation<string>,
   jobTitle: Annotation<string>,
@@ -69,7 +68,6 @@ export const RecruiterStateAnnotation = Annotation.Root({
  * Es un subconjunto del state: solo lo que el grafo necesita para arrancar.
  */
 export const RecruiterInputAnnotation = Annotation.Root({
-  cvBuffer: Annotation<Buffer>,
   jobDescription: Annotation<string>,
   jobTitle: Annotation<string>,
 });

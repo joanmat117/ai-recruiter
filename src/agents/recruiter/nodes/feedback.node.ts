@@ -13,13 +13,19 @@
  * TODO: Create constructive feedback highlighting strengths
  * TODO: Suggest salary range based on experience and market data
  */
-export function feedbackNode(state: any) {
+import { RunnableConfig } from '@langchain/core/runnables';
+import { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { RecruiterState } from '../state/recruiter.state';
+import { StateSteps } from '../types/recruiter-state.type';
+
+export function feedbackNode(state: RecruiterState, config: RunnableConfig): Partial<RecruiterState> {
+  const llm = config.configurable?.llm as BaseChatModel;
   console.log('[feedback] TODO: Implement feedback generation');
   return {
     interviewQuestions: [],
     feedbackForCandidate: '',
     salaryRecommendation: undefined,
     nextSteps: [],
-    currentStep: 'complete',
+    currentStep: StateSteps.Complete,
   };
 }

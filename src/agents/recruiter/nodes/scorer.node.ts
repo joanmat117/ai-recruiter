@@ -17,7 +17,13 @@
  * TODO: Calculate confidence based on data completeness
  * TODO: Identify strengths, weaknesses, red flags, green flags
  */
-export function scorerNode(state: any) {
+import { RunnableConfig } from '@langchain/core/runnables';
+import { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { RecruiterState } from '../state/recruiter.state';
+import { StateSteps } from '../types/recruiter-state.type';
+
+export function scorerNode(state: RecruiterState, config: RunnableConfig): Partial<RecruiterState> {
+  const llm = config.configurable?.llm as BaseChatModel;
   console.log('[scorer] TODO: Implement scoring algorithm');
   return {
     scores: { overall: 0, skills: 0, experience: 0, education: 0 },
@@ -27,6 +33,6 @@ export function scorerNode(state: any) {
     weaknesses: [],
     redFlags: [],
     greenFlags: [],
-    currentStep: 'feedback',
+    currentStep: StateSteps.Feedback,
   };
 }

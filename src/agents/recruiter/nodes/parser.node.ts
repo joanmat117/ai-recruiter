@@ -13,10 +13,16 @@
  * TODO: Handle different CV formats (chronological, functional, combination)
  * TODO: Add metadata extraction (author, creation date)
  */
-export function parserNode(state: any) {
+import { RunnableConfig } from '@langchain/core/runnables';
+import { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { RecruiterState } from '../state/recruiter.state';
+import { StateSteps } from '../types/recruiter-state.type';
+
+export function parserNode(state: RecruiterState, config: RunnableConfig): Partial<RecruiterState> {
+  const llm = config.configurable?.llm as BaseChatModel;
   console.log('[parser] TODO: Implement CV text extraction and normalization');
   return {
     cvText: state.cvText || '',
-    currentStep: 'analyzing',
+    currentStep: StateSteps.Analyzing,
   };
 }

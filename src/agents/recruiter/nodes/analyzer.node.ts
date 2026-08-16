@@ -13,13 +13,19 @@
  * TODO: Parse salary range if available
  * TODO: Extract industry keywords
  */
-export function analyzerNode(state: any) {
+import { RunnableConfig } from '@langchain/core/runnables';
+import { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { RecruiterState } from '../state/recruiter.state';
+import { StateSteps } from '../types/recruiter-state.type';
+
+export function analyzerNode(state: RecruiterState, config: RunnableConfig): Partial<RecruiterState> {
+  const llm = config.configurable?.llm as BaseChatModel;
   console.log('[analyzer] TODO: Implement job description analysis');
   return {
     requiredSkills: [],
     preferredSkills: [],
     yearsExperienceRequired: 0,
     educationRequired: '',
-    currentStep: 'matching',
+    currentStep: StateSteps.Matching,
   };
 }
