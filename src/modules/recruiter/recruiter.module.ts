@@ -7,6 +7,9 @@ import { RecruiterService } from './services/recruiter.service';
 import { RecruiterController } from './controllers/recruiter.controller';
 import { BullModule } from '@nestjs/bullmq';
 import { RecruiterQueues } from './queues/recruiter-queues.enum';
+import { PdfConsumer } from './queues/pdf/pdf.consumer';
+import { EXTRACTED_PDF_REPOSITORY } from './interfaces/extracted-pdf.repository.interface';
+import { InMemoryExtractedPdfRepository } from './repositories/in-memory-extracted-pdf.repository';
 
 @Module({
   imports: [
@@ -22,7 +25,16 @@ import { RecruiterQueues } from './queues/recruiter-queues.enum';
       }
     })
   ],
-  providers: [RecruiterService],
+  providers: [
+    RecruiterService,
+    PdfExtractorTool,
+    JobMatcherTool,
+    PdfConsumer,
+    {
+      provide: EXTRACTED_PDF_REPOSITORY,
+      useClass: InMemoryExtractedPdfRepository
+    }
+  ],
   exports: [JobMatcherTool, PdfExtractorTool],
   controllers: [RecruiterController],
 })

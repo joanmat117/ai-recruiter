@@ -22,3 +22,5 @@ El objetivo es que el backend no se acople a ninguno de estos sino solo a la api
   - Validar la url (dominio,extension,etc)
   - Validar el documetn type no solo por la extension sino con librerias especializadas
   - Definir tamano maximo de los archivos
+
+## Implementar Drizzle y REpositoryPattern
