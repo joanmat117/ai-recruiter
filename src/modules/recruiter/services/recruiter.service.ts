@@ -8,7 +8,6 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class RecruiterService {
   private readonly logger = new Logger(RecruiterService.name);
-  private readonly jobStatuses: Map<string, RecruiterState> = new Map();
   private readonly llmProvider: BaseChatModel
 
   constructor(

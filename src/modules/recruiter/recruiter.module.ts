@@ -10,6 +10,8 @@ import { RecruiterQueues } from './queues/recruiter-queues.enum';
 import { PdfConsumer } from './queues/pdf/pdf.consumer';
 import { EXTRACTED_PDF_REPOSITORY } from './interfaces/extracted-pdf.repository.interface';
 import { InMemoryExtractedPdfRepository } from './repositories/in-memory-extracted-pdf.repository';
+import { FILE_STORAGE } from './interfaces/file-storage.interface';
+import { S3FileStorageAdapter } from './adapters/s3-file-storage.adapter';
 
 @Module({
   imports: [
@@ -33,6 +35,9 @@ import { InMemoryExtractedPdfRepository } from './repositories/in-memory-extract
     {
       provide: EXTRACTED_PDF_REPOSITORY,
       useClass: InMemoryExtractedPdfRepository
+    }, {
+      provide: FILE_STORAGE,
+      useClass: S3FileStorageAdapter
     }
   ],
   exports: [JobMatcherTool, PdfExtractorTool],
