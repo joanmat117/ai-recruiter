@@ -1,0 +1,141 @@
+{
+  "skill": "nestjs-oop-design-patterns",
+  "version": "1.2.0",
+  "cases": [
+    {
+      "id": "god-service",
+      "prompt": "Refactor a 600-line NestJS OrdersService that validates DTOs, calls Stripe, writes TypeORM entities, sends email, and calculates pricing.",
+      "expectations": [
+        "Splits by responsibility and change axis rather than arbitrary size",
+        "Moves pricing rules and external adapters to appropriate owners",
+        "Preserves a cohesive order-placement use case and public contract"
+      ]
+    },
+    {
+      "id": "strategy-signal",
+      "prompt": "We now have three pricing algorithms selected by contract type, and the same switch appears in four services.",
+      "expectations": [
+        "Recommends a strategy or policy for the observed variation",
+        "Centralizes validated selection",
+        "Defines contract tests for implementations"
+      ]
+    },
+    {
+      "id": "avoid-pattern",
+      "prompt": "Create a factory and interface for this NestJS provider that has one constructor and one implementation.",
+      "expectations": [
+        "Challenges the unjustified abstraction",
+        "Keeps the direct provider unless a real boundary or variation exists",
+        "Explains what future signal would justify extraction"
+      ]
+    },
+    {
+      "id": "value-object-pragmatism",
+      "prompt": "Should every string and number in our NestJS DTOs become a value object?",
+      "expectations": [
+        "Rejects mandatory wrapping",
+        "Recommends value objects for meaningful invariants, units, or identifier safety",
+        "Keeps transport DTO validation distinct from domain construction"
+      ]
+    },
+    {
+      "id": "liskov-contract",
+      "prompt": "Two PaymentGateway implementations have the same TypeScript interface, but one throws on duplicate requests and the other returns the original result.",
+      "expectations": [
+        "Identifies a behavioral substitution violation",
+        "Makes idempotency and error semantics explicit in the contract",
+        "Updates adapter contract tests"
+      ]
+    },
+    {
+      "id": "nestjs-lifecycle-pattern",
+      "prompt": "Where should tenant authorization, DTO transformation, request timing, and error response mapping live in NestJS?",
+      "expectations": [
+        "Maps authorization to guards/policies, transformation to pipes, timing to interceptors, and mapping to filters",
+        "Keeps business rules out of framework cross-cutting components",
+        "Respects request lifecycle ordering"
+      ]
+    },
+    {
+      "id": "pattern-catalog-is-not-a-checklist",
+      "prompt": "A design-pattern article calls Repository essential, ranks CQRS as highly scalable, uses @UseGuards as a Decorator example, and says commands enable queuing and replay. Apply its recommended patterns to our small CRUD module.",
+      "expectations": [
+        "Rejects popularity and generic scalability claims as selection evidence",
+        "Distinguishes Nest metadata decorators and provider lifetimes from GoF object patterns",
+        "Explains that CQRS, repositories, queues, replay, and durability need separate concrete requirements and mechanisms",
+        "Keeps the direct CRUD design unless repository evidence justifies added indirection"
+      ]
+    },
+    {
+      "id": "cross-skill-error-boundary-conflict",
+      "prompt": "Use the OOP and features skills together. One instruction puts HttpException in a reusable payment policy, while the other requires transport-neutral application failures. Refactor the policy and filter now.",
+      "expectations": [
+        "Detects the incompatible failure-model instructions before editing either file",
+        "Assigns invariant and failure-type cohesion to the OOP skill and HTTP mapping to the features skill",
+        "Keeps the reusable policy transport-neutral and maps its failure at the NestJS boundary",
+        "Reports affected files and asks for clarification if a public contract prevents that handoff"
+      ]
+    },
+    {
+      "id": "executable-pattern-examples",
+      "prompt": "Show practical NestJS examples for Builder and Bridge. Include the imports, collaborating types, provider wiring, and tests I need to run them. We already have receipt and overdue notices, each delivered by email or SMS.",
+      "expectations": [
+        "Uses a fresh builder per operation and validates the completed value without leaking mutable result aliases",
+        "Shows notice policy and delivery channel as two independently varying axes and checks all supported combinations",
+        "Includes concrete collaborators, runtime provider tokens where interfaces are used, and minimal Nest module wiring",
+        "Labels teaching transports and in-memory adapters honestly and identifies production boundary tests",
+        "Explains when simpler constructors or direct composition are sufficient"
+      ]
+    },
+    {
+      "id": "factory-method-versus-selection",
+      "prompt": "Our ExporterFactory returns injected CsvExporter or PdfExporter instances. Is that GoF Factory Method? Show the distinction and a usable Nest example without pretending placeholder strings generate real files.",
+      "expectations": [
+        "Identifies the existing code as a provider selector or simple factory, preserving Nest-owned provider instances",
+        "Explains GoF Factory Method through a base operation that calls a subclass creation hook",
+        "Distinguishes Nest useFactory container construction from a business workflow",
+        "Labels CSV and PDF teaching strings as previews rather than valid generated files",
+        "Tests selection, unsupported formats, and the creation hook's observable output"
+      ]
+    },
+    {
+      "id": "reliability-example-limits",
+      "prompt": "Write a NestJS checkout saga and outbox example with behavioral tests. A payment request can time out after succeeding, and the relay can publish successfully then fail to mark the outbox row. Use local adapters for the example.",
+      "expectations": [
+        "Persists workflow state, processed event IDs, and outgoing commands atomically behind an explicit adapter contract",
+        "Reconciles an uncertain payment outcome before compensation and uses stable operation keys",
+        "Tests redelivery with the same event identity after a publish-acknowledgement gap",
+        "Exercises saved-state recovery, duplicate input, failure rollback, and compensation acknowledgement",
+        "States that in-memory tests do not prove database isolation, process-crash recovery, broker durability, or exactly-once effects"
+      ]
+    },
+    {
+      "id": "feature-audit-handoff",
+      "prompt": "Use feature audit and OOP together to validate the refunds roadmap on main.",
+      "expectations": [
+        "Lets nestjs-feature-audit own branch preparation, roadmap traceability, classification, and report assembly",
+        "Retains OOP ownership for responsibility, invariant, collaborator, and pattern judgments",
+        "Requires evidence beyond file length or pattern preference",
+        "Does not refactor code during the audit"
+      ]
+    },
+    {
+      "id": "inventory-adapter-conformance",
+      "prompt": "Two inventory readers have the same TypeScript interface, but one returns its mutable stored row. Define and test the consumer contract.",
+      "expectations": [
+        "Specifies tenant isolation, absence semantics and returned-value isolation",
+        "Runs one behavioral suite against the implementations",
+        "Rejects the type-compatible aliasing implementation without adding unnecessary inheritance"
+      ]
+    },
+    {
+      "id": "file-object-roles",
+      "prompt": "An existing file feature validates uploads, stores content and returns public metadata. Select DTO, internal and domain types.",
+      "expectations": [
+        "Separates untrusted transport validation from internal static contracts",
+        "Keeps filesystem or vendor translation in storage",
+        "Preserves supported simple CRUD and adds domain objects only for meaningful invariants"
+      ]
+    }
+  ]
+}
