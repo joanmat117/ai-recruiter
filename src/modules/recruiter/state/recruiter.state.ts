@@ -1,13 +1,14 @@
-import { Annotation } from "@langchain/langgraph";
+import { Annotation } from '@langchain/langgraph';
+import { StateSteps } from '../types/recruiter-state.type';
 
 // ===== TIPOS COMPARTIDOS =====
 export interface CandidateProfile {
   skills: string[];
   yearsOfExperience: number;
   experience: {
-    startDate?: string,
+    startDate?: string;
     endDate?: string;
-    summary: string
+    summary: string;
   }[];
   education: {
     degree: string;
@@ -15,8 +16,8 @@ export interface CandidateProfile {
     institution?: string;
   }[];
   languages: {
-    language: string,
-    proficiency: string
+    language: string;
+    proficiency: string;
   };
 }
 
@@ -45,9 +46,31 @@ export interface MatchResult {
 }
 
 export interface Recommendation {
-  decision: 'ADVANCE' | 'REJECT' | 'REVIEW';
+  decision: 'ADVANCE' | 'REVIEW' | 'REJECT';
   confidence: number;
   reasoning: string;
+}
+
+export interface Scores {
+  overall: number;
+  skills: number;
+  experience: number;
+  education: number;
+}
+
+export interface Output {
+  interviewQuestions: string[];
+  feedbackForCandidate: string;
+  salarySuggestion: string;
+  nextSteps: string[];
+}
+
+export interface Meta {
+  step: StateSteps;
+  errors: string[];
+  warnings: string[];
+  processingTime: number;
+  timestamp: Date;
 }
 
 // ===== ESTADO INTERNO =====
@@ -65,22 +88,14 @@ export const RecruiterStateAnnotation = Annotation.Root({
   match: Annotation<MatchResult>,
   recommendation: Annotation<Recommendation>,
 
+  // Scores calculados
+  scores: Annotation<Scores>,
+
   // Output generado
-  output: Annotation<{
-    interviewQuestions: string[];
-    feedbackForCandidate: string;
-    salarySuggestion: string;
-    nextSteps: string[];
-  }>,
+  output: Annotation<Output>,
 
   // Metadata
-  meta: Annotation<{
-    step: 'parse' | 'analyze' | 'match' | 'recommend' | 'complete';
-    errors: string[];
-    warnings: string[];
-    processingTime: number;
-    timestamp: Date;
-  }>,
+  meta: Annotation<Meta>,
 });
 
 // ===== INPUT PÚBLICO =====
@@ -92,23 +107,28 @@ export const RecruiterInputAnnotation = Annotation.Root({
 
 // ===== OUTPUT PÚBLICO =====
 export const RecruiterOutputAnnotation = Annotation.Root({
-  // Solo lo esencial
   decision: Annotation<Recommendation['decision']>,
   confidence: Annotation<number>,
   reasoning: Annotation<string>,
-
-  // Para transparencia
   score: Annotation<number>,
   strengths: Annotation<string[]>,
   weaknesses: Annotation<string[]>,
-
-  // Accionable
   interviewQuestions: Annotation<string[]>,
   feedbackForCandidate: Annotation<string>,
   nextSteps: Annotation<string[]>,
+  scores: Annotation<Scores>,
+  recommendation: Annotation<Recommendation>,
+  match: Annotation<MatchResult>,
+  output: Annotation<Output>,
+  meta: Annotation<Meta>,
 });
 
 // Tipos derivados
 export type IRecruiterState = typeof RecruiterStateAnnotation.State;
 export type IRecruiterInput = typeof RecruiterInputAnnotation.State;
 export type IRecruiterOutput = typeof RecruiterOutputAnnotation.State;
+
+// Export type aliases for backward compatibility
+export type RecruiterState = IRecruiterState;
+export type RecruiterInput = IRecruiterInput;
+export type RecruiterOutput = IRecruiterOutput;

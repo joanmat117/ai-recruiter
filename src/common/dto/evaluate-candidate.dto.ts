@@ -1,11 +1,22 @@
-import { IsString, IsOptional, IsEnum } from 'class-validator';
-import { LlmProvider } from '../enums/llm-provider.enum';
+import { IsString, IsOptional, Validate } from 'class-validator';
+import { EvaluationRequest } from '../../modules/recruiter/value-objects/evaluation-request.vo';
+import { S3KeyValidator } from '../../modules/recruiter/validators/s3-key.validator';
+import { JobDescriptionValidator } from '../../modules/recruiter/validators/job-description.validator';
 
 export class EvaluateCandidateDto {
   @IsString()
+  @Validate(S3KeyValidator)
+  s3Key: string;
+
+  @IsString()
+  @Validate(JobDescriptionValidator)
   jobDescription: string;
 
   @IsOptional()
-  @IsEnum(LlmProvider)
-  llmProvider?: LlmProvider;
+  @IsString()
+  jobTitle?: string;
+
+  toRequest(): EvaluationRequest {
+    return EvaluationRequest.from(this);
+  }
 }

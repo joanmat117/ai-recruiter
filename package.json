@@ -37,10 +37,13 @@
     "chromadb": "^3.5.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
+    "drizzle-kit": "^0.31.11",
+    "drizzle-orm": "^0.45.4",
     "ioredis": "^6.0.0",
     "ip-cidr": "^4.0.2",
     "multer": "^2.2.0",
     "pdf-parse": "^2.4.5",
+    "postgres": "^4.1.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "zod": "^4.4.3"

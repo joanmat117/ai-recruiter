@@ -1,57 +1,66 @@
-import { OnWorkerEvent, Processor, WorkerHost } from "@nestjs/bullmq";
-import { RecruiterQueues } from "../recruiter-queues.enum";
-import { type Job } from "bullmq";
-import { PdfExtractorTool } from "../../tools/pdf-extractor.tool";
-import { Inject, Logger } from "@nestjs/common";
-import { EXTRACTED_PDF_REPOSITORY, type IExtractedPdfRepository } from "../../interfaces/extracted-pdf.repository.interface";
+import { Processor, WorkerHost } from '@nestjs/bullmq';
+import type { Job } from 'bullmq';
+import { PDF_JOBS, AI_RECRUITER_JOBS, QUEUE_NAMES } from '../../constants/job-names';
+import { PdfExtractorTool } from '../../tools/pdf-extractor.tool';
+import { Inject, Logger } from '@nestjs/common';
+import type { IExtractedPdfRepository } from '../../interfaces/extracted-pdf.repository.interface';
+import { EXTRACTED_PDF_REPOSITORY } from '../../interfaces/extracted-pdf.repository.interface';
+import type { IFileStorage } from '../../interfaces/file-storage.interface';
+import { FILE_STORAGE } from '../../interfaces/file-storage.interface';
 
-export type PdfJob = Job<{ url: string, name: string }, { text: string }>;
+export type PdfJob = Job<{
+  s3Key: string;
+  presignedUrl: string;
+  jobDescription: string;
+  jobTitle?: string;
+}, {
+  text: string;
+  s3Key: string;
+  jobDescription: string;
+  jobTitle?: string;
+  nextJob?: { name: string; data: any }; // Para job chaining nativo (A4)
+}>;
 
-@Processor(RecruiterQueues.PDF_EXTRACTION)
+@Processor(QUEUE_NAMES.PDF_EXTRACTION)
 export class PdfConsumer extends WorkerHost {
-
   private readonly logger = new Logger(PdfConsumer.name);
 
   constructor(
     private readonly pdfExtractorTool: PdfExtractorTool,
-    @Inject(EXTRACTED_PDF_REPOSITORY)
-    private readonly extractedPdfRepository: IExtractedPdfRepository
+    @Inject(EXTRACTED_PDF_REPOSITORY) private readonly extractedPdfRepository: IExtractedPdfRepository,
+    @Inject(FILE_STORAGE) private readonly fileStorage: IFileStorage,
+    // NO inyectar aiRecruiterQueue directamente - usa job chaining
   ) {
-    super()
+    super();
   }
 
   async process(job: PdfJob) {
+    this.logger.log(`Procesando PDF: ${job.data.s3Key}`);
 
-    const response = await fetch(job.data.url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/pdf',
-      }
-    })
+    // Descargar via S3 adapter (sin expiry, más control)
+    const buffer = await this.fileStorage.downloadFile(job.data.s3Key);
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch PDF from ${job.data.url}: ${response.statusText}`);
-    }
+    const result = await this.pdfExtractorTool.extractText(buffer);
 
-    const pdfBuffer = await response.arrayBuffer().then(arrayBuffer => Buffer.from(arrayBuffer));
-
-    const result = await this.pdfExtractorTool.extractText(pdfBuffer)
-
+    // Retorna resultado + nextJob para BullMQ Job Chaining nativo (A4)
+    // Si process() retorna nextJob, BullMQ lo encola atómicamente en la misma transacción
     return {
-      text: result.text
-    }
+      text: result.text,
+      s3Key: job.data.s3Key,
+      jobDescription: job.data.jobDescription,
+      jobTitle: job.data.jobTitle,
+      nextJob: {
+        name: AI_RECRUITER_JOBS.EVALUATE_CANDIDATE,
+        data: {
+          cvText: result.text,
+          jobDescription: job.data.jobDescription,
+          jobTitle: job.data.jobTitle,
+          sourceS3Key: job.data.s3Key,
+        },
+      },
+    };
   }
 
-  @OnWorkerEvent("completed")
-  onCompleted(job: PdfJob) {
-    this.logger.log(`PDF ${job.id} extraction job completed for URL: ${job.data.url}`);
-
-    this.extractedPdfRepository.save({
-      extractedText: job.returnvalue.text,
-      name: job.data.name,
-      pdfUrl: job.data.url
-    })
-
-  }
-
+  // ELIMINADO onCompleted side effect - el chaining es transaccional
+  // Si process() falla, job va a failed state con retry policy configurado en module
 }

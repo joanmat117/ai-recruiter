@@ -15,14 +15,19 @@ export interface PdfExtractionResult {
 export class PdfExtractorTool {
   private readonly logger = new Logger(PdfExtractorTool.name);
 
-  async extractText(buffer: Buffer): Promise<PdfExtractionResult> {
+  async extractText(buffer: Buffer | ArrayBuffer | Uint8Array): Promise<PdfExtractionResult> {
     try {
-      const parser = new PDFParse({ data: new Uint8Array(buffer) });
+      const uint8Array = buffer instanceof Buffer
+        ? new Uint8Array(buffer)
+        : buffer instanceof ArrayBuffer
+          ? new Uint8Array(buffer)
+          : buffer;
+      const parser = new PDFParse({ data: uint8Array });
       const textResult = await parser.getText();
       const info = await parser.getInfo();
-      
+
       const cleanedText = this.cleanText(textResult.text);
-      
+
       return {
         text: cleanedText,
         metadata: {

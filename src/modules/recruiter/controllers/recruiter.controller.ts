@@ -4,115 +4,93 @@ import {
   Get,
   Body,
   Param,
-  UploadedFile,
-  UploadedFiles,
-  UseInterceptors,
   BadRequestException,
   HttpCode,
   HttpStatus,
+  Inject,
 } from '@nestjs/common';
-import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
-import { RecruiterService } from '../services/recruiter.service';
+import type { Queue } from 'bullmq';
+import { EvaluationRequest } from '../value-objects/evaluation-request.vo';
+import { PDF_JOBS, QUEUE_NAMES } from '../constants/job-names';
+import { randomUUID } from 'crypto';
+import type { IFileStorage } from '../interfaces/file-storage.interface';
+import { FILE_STORAGE } from '../interfaces/file-storage.interface';
+import { getQueueToken } from '@nestjs/bullmq';
 import { EvaluateCandidateDto } from '../../../common/dto/evaluate-candidate.dto';
-import { CompareCandidatesDto, InterviewQuestionsDto, FeedbackDto } from '../../../common/dto/job-description.dto';
+import type { IEvaluationRepository } from '../interfaces/evaluation.repository.interface';
+import { EVALUATION_REPOSITORY } from '../interfaces/evaluation.repository.interface';
 
 @Controller('recruiter')
 export class RecruiterController {
-  constructor(private readonly recruiterService: RecruiterService) { }
+  constructor(
+    @Inject(getQueueToken(QUEUE_NAMES.PDF_EXTRACTION)) private readonly pdfQueue: Queue,
+    @Inject(getQueueToken(QUEUE_NAMES.AI_RECRUITER)) private readonly aiRecruiterQueue: Queue,
+    @Inject(FILE_STORAGE) private readonly fileStorage: IFileStorage,
+    @Inject(EVALUATION_REPOSITORY) private readonly evaluationRepository: IEvaluationRepository,
+  ) {}
 
   @Post('evaluate')
   @HttpCode(HttpStatus.CREATED)
-  @UseInterceptors(FileInterceptor('cv', { storage: undefined, limits: { fileSize: 10 * 1024 * 1024 } }))
-  async evaluateCandidate(
-    @UploadedFile() file: Express.Multer.File,
-    @Body('jobDescription') jobDescription: string,
-    @Body('jobTitle') jobTitle?: string,
-  ) {
-    if (!file) {
-      throw new BadRequestException('CV file is required');
+  async evaluateCandidate(@Body() dto: EvaluateCandidateDto) {
+    // Value Object valida invariantes (A5)
+    const request = dto.toRequest();
+
+    // Verifica que el archivo existe en S3
+    const exists = await this.fileStorage.fileExists(request.s3Key.value);
+    if (!exists) {
+      throw new BadRequestException(`File not found in S3: ${request.s3Key.value}`);
     }
 
-    if (!jobDescription) {
-      throw new BadRequestException('Job description is required');
-    }
+    // Genera presigned GET para el worker (expira en 2h)
+    const presignedGet = await this.fileStorage.getPresignedGET(request.s3Key.value, { expirySeconds: 7200 });
 
-    const result = await this.recruiterService.evaluateCandidate(
-      jobDescription,
-      jobTitle,
-    );
+    const jobId = `eval-${randomUUID()}`;
+    await this.pdfQueue.add(PDF_JOBS.EXTRACT_PDF, {
+      s3Key: request.s3Key.value,
+      presignedUrl: presignedGet.url,
+      jobDescription: request.jobDescription.value,
+      jobTitle: request.jobTitle.value,
+    }, { jobId });
 
-    return result;
-  }
-
-  @Post('evaluate-batch')
-  @HttpCode(HttpStatus.CREATED)
-  @UseInterceptors(FilesInterceptor('cvs', 10, { storage: undefined, limits: { fileSize: 10 * 1024 * 1024 } }))
-  async evaluateBatch(
-    @UploadedFiles() files: Express.Multer.File[],
-    @Body('jobDescription') jobDescription: string,
-    @Body('jobTitle') jobTitle?: string,
-    @Body('llmProvider') llmProvider?: string,
-  ) {
-    if (!files || files.length === 0) {
-      throw new BadRequestException('At least one CV file is required');
-    }
-
-    if (!jobDescription) {
-      throw new BadRequestException('Job description is required');
-    }
-
-    const buffers = files.map(f => f.buffer);
-    const result = await this.recruiterService.evaluateBatch(
-      buffers,
-      jobDescription,
-      jobTitle,
-      llmProvider,
-    );
-
-    return result;
+    return { jobId, status: 'queued', message: 'PDF encolado para procesamiento' };
   }
 
   @Get('status/:jobId')
   async getStatus(@Param('jobId') jobId: string) {
-    const status = this.recruiterService.getJobStatus(jobId);
-    if (!status) {
-      return { message: 'Job not found', jobId };
+    // 1. Buscar en BD primero (resultado final)
+    const evaluation = await this.evaluationRepository.findByJobId(jobId);
+    if (evaluation) {
+      return {
+        jobId,
+        status: 'completed',
+        result: evaluation,
+      };
     }
-    return status;
-  }
 
-  @Post('compare')
-  @HttpCode(HttpStatus.OK)
-  async compareCandidates(@Body() dto: CompareCandidatesDto) {
-    // In production, would fetch evaluations by IDs
-    // For now, return a placeholder
-    return {
-      message: 'Comparison endpoint ready',
-      candidateIds: dto.candidateIds,
-    };
-  }
+    // 2. No está en BD: verificar colas (procesando o fallido)
+    const pdfJob = await this.pdfQueue.getJob(jobId);
+    const aiJob = await this.aiRecruiterQueue.getJob(jobId);
 
-  @Post('interview-questions')
-  @HttpCode(HttpStatus.OK)
-  async generateInterviewQuestions(@Body() dto: InterviewQuestionsDto) {
-    // Placeholder - would use LLM to generate questions
-    return {
-      questions: [
-        'Tell me about your experience with the main technologies listed in the job description.',
-        'Can you describe a challenging project you worked on and how you overcame obstacles?',
-        'How do you stay updated with new technologies and industry trends?',
-      ],
-      candidateId: dto.candidateId,
-    };
-  }
+    if (pdfJob) {
+      const state = await pdfJob.getState();
+      return {
+        jobId,
+        status: state, // 'waiting', 'active', 'completed', 'failed', 'delayed'
+        message: 'PDF en cola de extracción',
+        source: 'pdf-extraction-queue',
+      };
+    }
 
-  @Post('feedback')
-  @HttpCode(HttpStatus.OK)
-  async generateFeedback(@Body() dto: FeedbackDto) {
-    // Placeholder - would use LLM to generate feedback
-    return {
-      feedback: 'Thank you for your application. We appreciate your interest in the position.',
-      candidateId: dto.candidateId,
-    };
+    if (aiJob) {
+      const state = await aiJob.getState();
+      return {
+        jobId,
+        status: state,
+        message: 'Evaluación en cola de IA',
+        source: 'ai-recruiter-queue',
+      };
+    }
+
+    throw new BadRequestException(`Job no encontrado: ${jobId}`);
   }
 }
