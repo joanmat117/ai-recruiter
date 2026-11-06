@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, timestamp, vector } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, timestamp } from 'drizzle-orm/pg-core';
 
 export const extractedPdfs = pgTable('extracted_pdfs', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -6,7 +6,6 @@ export const extractedPdfs = pgTable('extracted_pdfs', {
   extractedText: text('extracted_text').notNull(),
   jobDescription: text('job_description').notNull(),
   jobTitle: varchar('job_title', { length: 255 }),
-  embedding: vector('embedding', { dimensions: 1536 }), // pgvector
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 

@@ -44,7 +44,6 @@ export class AiRecruiterConsumer extends WorkerHost {
       cvText,
       jobDescription,
       jobTitle,
-      cvEmbedding: undefined, // Fase 5: embedding service
       scores: result.scores,
       recommendation: result.recommendation,
       matchDetails: result.match,

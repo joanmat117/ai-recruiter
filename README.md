@@ -1,6 +1,6 @@
 # AI Recruiter — Async Queue-Based Candidate Evaluation System
 
-> **Arquitectura:** NestJS 11 + LangGraph + BullMQ + Drizzle ORM + pgvector + S3 (Filebase)
+> **Arquitectura:** NestJS 11 + LangGraph + BullMQ + Drizzle ORM + pgvector + S3 (RustFS local / Filebase / AWS / MinIO)
 > **Patrón:** Pipeline asíncrono `S3 → PDF Queue → AI Recruiter Queue → LangGraph → PostgreSQL`
 
 ---
@@ -60,6 +60,7 @@
 - **Value Objects** — Validación de invariantes en boundary (S3Key, JobDescription, JobTitle)
 - **Error handling robusto** — `handleNodeError` + `createErrorState` en cada nodo
 - **Inmutabilidad estricta** — Nodos retornan objetos nuevos completos (A9)
+- **S3 Local con RustFS** — `docker-compose` levanta S3 compatible completo (API + Console)
 
 ---
 
@@ -67,85 +68,165 @@
 
 | Herramienta | Versión |
 |-------------|---------|
-| Node.js | ≥ 20.x |
-| npm | ≥ 10.x |
-| PostgreSQL | ≥ 14 con extensión **pgvector** |
-| Redis | ≥ 7 (para BullMQ) |
-| Cuenta S3-compatible | Filebase, AWS S3, MinIO, etc. |
+| Docker / Docker Compose | ≥ 2.20 / ≥ 2.0 |
+| Node.js | ≥ 20.x (solo para desarrollo local sin Docker) |
+| npm | ≥ 10.x (solo para desarrollo local sin Docker) |
 
-### Variables de Entorno Requeridas
-
-Crea un archivo `.env` en la raíz:
-
-```env
-# App
-PORT=3000
-NODE_ENV=development
-
-# Database (PostgreSQL con pgvector)
-DATABASE_URL=postgresql://user:password@localhost:5432/ai_recruiter?schema=public
-
-# Redis (BullMQ)
-REDIS_HOST=localhost
-REDIS_PORT=6379
-
-# S3 (Filebase / AWS / MinIO)
-S3_ENDPOINT=https://s3.filebase.com
-S3_ACCESS_KEY=tu_access_key
-S3_SECRET_KEY=tu_secret_key
-
-# LLM Provider (elige uno)
-LLM_PROVIDER=openai          # openai | openrouter | gemini
-OPENAI_API_KEY=sk-...
-OPENAI_MODEL=gpt-4o
-
-# Opcional: OpenRouter
-OPENROUTER_API_KEY=sk-or-...
-OPENROUTER_MODEL=anthropic/claude-3-opus
-
-# Opcional: Gemini
-GEMINI_API_KEY=...
-GEMINI_MODEL=gemini-1.5-pro
-
-# Scoring Policy (opcional - tienen defaults)
-SCORING_WEIGHT_SKILLS=0.5
-SCORING_WEIGHT_EXPERIENCE=0.3
-SCORING_WEIGHT_EDUCATION=0.2
-SCORING_THRESHOLD_ADVANCE=85
-SCORING_THRESHOLD_REVIEW=50
-SCORING_THRESHOLD_REJECT=0
-```
+> **Con Docker Compose:** No necesitas instalar PostgreSQL, Redis, RustFS ni Node.js localmente. Todo corre en contenedores.
 
 ---
 
-## 🚀 Instalación y Puesta en Marcha
+## 🚀 Instalación y Puesta en Marcha (Con Docker Compose - RECOMENDADO)
 
-### 1. Clonar e instalar dependencias
+### 1. Clonar repositorio
 
 ```bash
 git clone <repo-url>
 cd ai-recruiter
-npm install --legacy-peer-deps
 ```
 
-> **Nota:** Se usa `--legacy-peer-deps` por conflictos de versiones en dependencias de LangChain (zod v4 vs v3).
+### 2. Configurar variables de entorno
 
-### 2. Levantar infraestructura (Docker Compose)
+```bash
+cp .env.example .env
+```
 
-```yaml
-# docker-compose.yml
+**Edita `.env` con tus credenciales:**
+
+```env
+# LLM Provider (OBLIGATORIO - elige uno)
+LLM_PROVIDER=openai
+OPENAI_API_KEY=sk-tu-api-key-aqui
+# OPENAI_MODEL=gpt-4o
+
+# O usa OpenRouter:
+# LLM_PROVIDER=openrouter
+# OPENROUTER_API_KEY=sk-or-tu-api-key
+
+# O usa Gemini:
+# LLM_PROVIDER=gemini
+# GEMINI_API_KEY=tu-api-key
+```
+
+> **Nota:** Las variables de S3, Database y Redis ya vienen configuradas para funcionar con `docker-compose` (RustFS local, PostgreSQL y Redis en contenedores).
+
+### 3. Levantar TODO (PostgreSQL + Redis + RustFS + App)
+
+```bash
+docker-compose up -d --build
+```
+
+### 4. Verificar servicios
+
+```bash
+# Ver logs de todos los servicios
+docker-compose logs -f
+
+# Ver solo RustFS
+docker-compose logs -f rustfs
+
+# Ver solo App
+docker-compose logs -f app
+```
+
+### 5. Acceder a RustFS Console (S3 Local)
+
+```
+URL: http://localhost:9001
+Usuario: rustfsadmin
+Contraseña: rustfsadmin
+```
+
+**Crear bucket `ai-recruiter`:**
+1. Entra a la console → Buckets → Create Bucket
+2. Nombre: `ai-recruiter`
+3. Región: `us-east-1` (cualquiera sirve en local)
+
+### 6. Migraciones de Base de Datos
+
+```bash
+# Ejecutar dentro del contenedor de la app
+docker-compose exec app npx drizzle-kit push
+```
+
+### 7. Probar la API
+
+```bash
+# Health check
+curl http://localhost:3000/health
+
+# Obtener presigned POST
+curl -X POST http://localhost:3000/recruiter/upload/presigned \
+  -H "Content-Type: application/json" \
+  -d '{"filename":"cv.pdf","contentType":"application/pdf"}'
+```
+
+---
+
+## 🛠️ Desarrollo Local: Infraestructura en Docker, App en Local
+
+> **Útil para:** Debug con breakpoints, hot-reload (`npm run start:dev`), logs en tu terminal nativo.
+
+### 1. Levantar SOLO la infraestructura (PostgreSQL + Redis + RustFS)
+
+```bash
+# Opción A: Comandos individuales
+# PostgreSQL + pgvector
+docker run -d --name ai-recruiter-pg \
+  -p 5432:5432 \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=ai_recruiter \
+  -v pg_data:/var/lib/postgresql/data \
+  pgvector/pgvector:pg16
+
+# Redis
+docker run -d --name ai-recruiter-redis \
+  -p 6379:6379 \
+  -v redis_data:/data \
+  redis:7-alpine
+
+# RustFS (S3 Local) — requiere RUSTFS_UNSAFE_BYPASS_DISK_CHECK=true en local (4 volúmenes en mismo disco)
+docker run -d --name ai-recruiter-rustfs \
+  -p 9000:9000 -p 9001:9001 \
+  -e RUSTFS_ACCESS_KEY=rustfsadmin \
+  -e RUSTFS_SECRET_KEY=rustfsadmin \
+  -e RUSTFS_CONSOLE_ENABLE=true \
+  -e RUSTFS_VOLUMES=/data/rustfs{0...3} \
+  -e RUSTFS_ADDRESS=0.0.0.0:9000 \
+  -e RUSTFS_CONSOLE_ADDRESS=0.0.0.0:9001 \
+  -e RUSTFS_UNSAFE_BYPASS_DISK_CHECK=true \
+  -v rustfs_data_0:/data/rustfs0 \
+  -v rustfs_data_1:/data/rustfs1 \
+  -v rustfs_data_2:/data/rustfs2 \
+  -v rustfs_data_3:/data/rustfs3 \
+  rustfs/rustfs:latest
+
+# Fix permisos volúmenes (RustFS corre como UID 10001, Docker volumes se crean como root)
+# Solo necesario con "Opción A: Comandos individuales"
+docker run --rm \
+  -v rustfs_data_0:/data/rustfs0 \
+  -v rustfs_data_1:/data/rustfs1 \
+  -v rustfs_data_2:/data/rustfs2 \
+  -v rustfs_data_3:/data/rustfs3 \
+  alpine sh -c "chown -R 10001:10001 /data/rustfs0 /data/rustfs1 /data/rustfs2 /data/rustfs3"
+```
+
+```bash
+# Opción B: Docker Compose solo para infra (recomendado)
+# Crea docker-compose.infra.yml:
+cat > docker-compose.infra.yml <<'EOF'
 version: '3.8'
 services:
   postgres:
     image: pgvector/pgvector:pg16
+    container_name: ai-recruiter-pg
+    ports: ["5432:5432"]
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: ai_recruiter
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+    volumes: [pg_data:/var/lib/postgresql/data]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -154,57 +235,172 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    container_name: ai-recruiter-redis
+    ports: ["6379:6379"]
+    volumes: [redis_data:/data]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5
 
+  rustfs:
+    image: rustfs/rustfs:latest
+    container_name: ai-recruiter-rustfs
+    ports: ["9000:9000", "9001:9001"]
+    environment:
+      RUSTFS_ACCESS_KEY: rustfsadmin
+      RUSTFS_SECRET_KEY: rustfsadmin
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_VOLUMES: "/data/rustfs{0...3}"
+      RUSTFS_ADDRESS: "0.0.0.0:9000"
+      RUSTFS_CONSOLE_ADDRESS: "0.0.0.0:9001"
+      RUSTFS_UNSAFE_BYPASS_DISK_CHECK: "true"
+    volumes:
+      - rustfs_data_0:/data/rustfs0
+      - rustfs_data_1:/data/rustfs1
+      - rustfs_data_2:/data/rustfs2
+      - rustfs_data_3:/data/rustfs3
+    healthcheck:
+      test: ["CMD", "sh", "-ec", "curl -fsS http://127.0.0.1:9000/health && curl -fsS http://127.0.0.1:9001/rustfs/console/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
 volumes:
-  postgres_data:
+  pg_data:
+  redis_data:
+  rustfs_data_0:
+  rustfs_data_1:
+  rustfs_data_2:
+  rustfs_data_3:
+EOF
+
+# Levantar
+docker compose -f docker-compose.infra.yml up -d
 ```
 
+### 2. Verificar que la infra está lista
+
 ```bash
-docker-compose up -d
+# Esperar ~20-30 seg (RustFS tarda más con UNSAFE_BYPASS_DISK_CHECK)
+sleep 30
+
+# PostgreSQL
+docker exec ai-recruiter-pg pg_isready -U postgres
+
+# Redis
+docker exec ai-recruiter-redis redis-cli ping
+
+# RustFS
+curl -f http://localhost:9000/health && curl -f http://localhost:9001/rustfs/console/health
 ```
 
-### 3. Ejecutar migraciones (Drizzle)
+> **⚠️ Si RustFS falla con `Permission denied (os error 13)`:** Los volúmenes Docker se crean como `root` pero RustFS corre como UID 10001. Ejecuta el fix de permisos y reinicia:
+> ```bash
+> docker rm -f ai-recruiter-rustfs
+> docker run --rm \
+>   -v rustfs_data_0:/data/rustfs0 \
+>   -v rustfs_data_1:/data/rustfs1 \
+>   -v rustfs_data_2:/data/rustfs2 \
+>   -v rustfs_data_3:/data/rustfs3 \
+>   alpine sh -c "chown -R 10001:10001 /data/rustfs0 /data/rustfs1 /data/rustfs2 /data/rustfs3"
+> # Luego vuelve a lanzar el docker run de RustFS (paso 1)
+> ```
+> Con **Opción B (docker-compose.infra.yml)** esto es automático vía `volume-permission-helper`.
+
+### 3. Crear bucket S3 (una sola vez)
 
 ```bash
-# Generar migraciones (primera vez)
-npx drizzle-kit generate
-
-# Aplicar migraciones
-npx drizzle-kit migrate
-
-# O empujar schema directamente (desarrollo)
-npx drizzle-kit push
+node -e "
+const { S3Client, CreateBucketCommand } = require('@aws-sdk/client-s3');
+const s3 = new S3Client({
+  endpoint: 'http://localhost:9000',
+  region: 'us-east-1',
+  credentials: { accessKeyId: 'rustfsadmin', secretAccessKey: 'rustfsadmin' },
+  forcePathStyle: true
+});
+s3.send(new CreateBucketCommand({ Bucket: 'ai-recruiter' }))
+  .then(() => console.log('✅ Bucket ai-recruiter creado'))
+  .catch(e => console.error('❌', e.message));
+"
 ```
 
-> **Importante:** La extensión `pgvector` se habilita automáticamente en la imagen `pgvector/pgvector:pg16`.
-
-### 4. Compilar y ejecutar
+### 4. Variables de entorno para desarrollo local
 
 ```bash
-# Desarrollo (watch mode)
-npm run start:dev
+# Crea .env.local (no commit)
+cat > .env.local <<'EOF'
+# App
+PORT=3000
+NODE_ENV=development
 
-# Producción
+# Database (apunta a localhost porque la app corre en host, no en Docker)
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ai_recruiter
+
+# Redis
+REDIS_HOST=localhost
+REDIS_PORT=6379
+
+# S3 (RustFS local)
+S3_ENDPOINT=http://localhost:9000
+S3_ACCESS_KEY=rustfsadmin
+S3_SECRET_KEY=rustfsadmin
+
+# LLM (REQUERIDO - elige uno)
+LLM_PROVIDER=openai
+OPENAI_API_KEY=sk-tu-api-key-aqui
+# OPENROUTER_API_KEY=sk-or-tu-api-key
+# GEMINI_API_KEY=tu-api-key
+
+# Opcional
+CHROMA_DB_URL=http://localhost:8000
+EOF
+```
+
+### 5. Migraciones y arranque
+
+```bash
+# Instalar deps si no lo hiciste
+npm ci --legacy-peer-deps
+
+# Build + migraciones
 npm run build
-npm run start:prod
+npx drizzle-kit push
+
+# Arrancar con hot-reload
+npm run start:dev
 ```
 
-El servidor estará disponible en `http://localhost:3000`
+### 6. Verificar API
+
+```bash
+curl http://localhost:3000/health
+# {"status":"ok","timestamp":"..."}
+```
 
 ---
 
 ## 🧪 Cómo Probar el Flujo Completo
 
-### Opción A: Con `curl` (paso a paso)
+### Opción A: Script automatizado (recomendado)
 
-#### 1. Obtener Presigned POST para subir PDF
+```bash
+# Necesitas un PDF de prueba
+./test-flow.sh ./mi-cv.pdf
+```
+
+**Qué hace el script:**
+1. Obtiene presigned POST de la API
+2. Sube PDF directo a RustFS (S3 local)
+3. Encola evaluación con job description de prueba
+4. Polling de estado cada 3s (máx 90s)
+5. Muestra resultado: recomendación, scores, preguntas, feedback
+
+### Opción B: Paso a paso con `curl`
+
+#### 1. Obtener Presigned POST
 
 ```bash
 curl -X POST http://localhost:3000/recruiter/upload/presigned \
@@ -215,20 +411,19 @@ curl -X POST http://localhost:3000/recruiter/upload/presigned \
 **Respuesta:**
 ```json
 {
-  "url": "https://s3.filebase.com/...",
+  "url": "http://localhost:9000/...",
   "fields": { "key": "cvs/uuid.pdf", "policy": "...", "x-amz-signature": "...", ... },
   "key": "cvs/abc-123.pdf",
   "expiresIn": 3600
 }
 ```
 
-#### 2. Subir PDF directo a S3 (desde cliente)
+#### 2. Subir PDF directo a RustFS (S3 local)
 
 ```bash
-# Guardar la respuesta anterior en variables
 KEY="cvs/abc-123.pdf"
-URL="https://s3.filebase.com/..."
-# ... otros campos de fields
+URL="http://localhost:9000/..."
+# ... extraer fields de la respuesta anterior
 
 curl -X POST "$URL" \
   -F "key=$KEY" \
@@ -264,18 +459,7 @@ curl -X POST http://localhost:3000/recruiter/evaluate \
 #### 4. Consultar estado (polling)
 
 ```bash
-# Esperar unos segundos y consultar
 curl http://localhost:3000/recruiter/status/eval-xyz-789
-```
-
-**Respuesta mientras procesa:**
-```json
-{
-  "jobId": "eval-xyz-789",
-  "status": "active",
-  "message": "Evaluación en cola de IA",
-  "source": "ai-recruiter-queue"
-}
 ```
 
 **Respuesta completado:**
@@ -284,120 +468,16 @@ curl http://localhost:3000/recruiter/status/eval-xyz-789
   "jobId": "eval-xyz-789",
   "status": "completed",
   "result": {
-    "jobId": "eval-xyz-789",
-    "s3Key": "cvs/abc-123.pdf",
-    "cvText": "Texto extraído del CV...",
-    "jobDescription": "Buscamos Senior Fullstack...",
-    "jobTitle": "Senior Fullstack Developer",
+    "recommendation": { "decision": "ADVANCE", "confidence": 80, "reasoning": "..." },
     "scores": { "overall": 82, "skills": 85, "experience": 75, "education": 90 },
-    "recommendation": { 
-      "decision": "ADVANCE", 
-      "confidence": 80, 
-      "reasoning": "Score 82/100 (skills: 85, exp: 75, edu: 90) | Policy: ADVANCE at 82" 
-    },
-    "match": { 
-      "score": 85,
-      "details": { 
-        "skills": { "matched": ["React", "Node.js", "TypeScript", "AWS"], "missing": ["Kubernetes", "GraphQL"], "score": 85 },
-        "experience": { "score": 75, "reasoning": "Candidato: 4 años, Requerido: 5 años" },
-        "education": { "score": 90, "reasoning": "Requerido: bachelor, Candidato nivel: 3" }
-      },
-      "strengths": ["React", "Node.js", "TypeScript", "AWS"],
-      "weaknesses": ["Kubernetes", "GraphQL"]
-    },
     "output": {
-      "interviewQuestions": [
-        "¿Cómo diseñarías una arquitectura escalable con React y Node.js?",
-        "Describe tu experiencia con AWS y contenedores Docker.",
-        "¿Cómo abordarías la migración a Kubernetes?"
-      ],
-      "feedbackForCandidate": "Tu perfil muestra sólida experiencia en React, Node.js y AWS...",
-      "salarySuggestion": "$120,000 - $150,000 USD anuales",
+      "interviewQuestions": [...],
+      "feedbackForCandidate": "...",
+      "salarySuggestion": "$120,000 - $150,000",
       "nextSteps": ["Entrevista técnica", "Revisión de arquitectura"]
-    },
-    "meta": { "step": "Complete", "errors": [], "warnings": [], "processingTime": 0, "timestamp": "..." },
-    "createdAt": "...",
-    "updatedAt": "..."
+    }
   }
 }
-```
-
----
-
-### Opción B: Script de prueba automatizado
-
-Crea `test-flow.sh`:
-
-```bash
-#!/bin/bash
-set -e
-
-BASE_URL="http://localhost:3000"
-PDF_PATH="./test-cv.pdf"  # Debe existir un PDF de prueba
-
-echo "1. Obteniendo presigned POST..."
-PRESIGNED=$(curl -s -X POST "$BASE_URL/recruiter/upload/presigned" \
-  -H "Content-Type: application/json" \
-  -d '{"filename":"test-cv.pdf","contentType":"application/pdf"}')
-
-KEY=$(echo $PRESIGNED | jq -r '.key')
-URL=$(echo $PRESIGNED | jq -r '.url')
-POLICY=$(echo $PRESIGNED | jq -r '.fields.policy')
-SIGNATURE=$(echo $PRESIGNED | jq -r '.fields."x-amz-signature"')
-CREDENTIAL=$(echo $PRESIGNED | jq -r '.fields."x-amz-credential"')
-ALGORITHM=$(echo $PRESIGNED | jq -r '.fields."x-amz-algorithm"')
-DATE=$(echo $PRESIGNED | jq -r '.fields."x-amz-date"')
-
-echo "Key: $KEY"
-
-echo "2. Subiendo PDF a S3..."
-curl -s -X POST "$URL" \
-  -F "key=$KEY" \
-  -F "policy=$POLICY" \
-  -F "x-amz-signature=$SIGNATURE" \
-  -F "x-amz-credential=$CREDENTIAL" \
-  -F "x-amz-algorithm=$ALGORITHM" \
-  -F "x-amz-date=$DATE" \
-  -F "file=@$PDF_PATH" > /dev/null
-
-echo "3. Encolando evaluación..."
-EVAL=$(curl -s -X POST "$BASE_URL/recruiter/evaluate" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "s3Key": "'$KEY'",
-    "jobDescription": "Senior Fullstack Developer con 5+ años en React, Node.js, TypeScript, AWS. Valorable: Kubernetes, GraphQL.",
-    "jobTitle": "Senior Fullstack Developer"
-  }')
-
-JOB_ID=$(echo $EVAL | jq -r '.jobId')
-echo "Job ID: $JOB_ID"
-
-echo "4. Esperando resultado (polling)..."
-for i in {1..30}; do
-  sleep 3
-  STATUS=$(curl -s "$BASE_URL/recruiter/status/$JOB_ID")
-  STATE=$(echo $STATUS | jq -r '.status')
-  echo "  Intento $i: $STATE"
-  if [ "$STATE" = "completed" ]; then
-    echo "✅ Completado!"
-    echo $STATUS | jq '.result.recommendation'
-    echo $STATUS | jq '.result.scores'
-    echo $STATUS | jq '.result.output.interviewQuestions'
-    exit 0
-  elif [ "$STATE" = "failed" ]; then
-    echo "❌ Falló"
-    echo $STATUS | jq .
-    exit 1
-  fi
-done
-
-echo "⏰ Timeout"
-exit 1
-```
-
-```bash
-chmod +x test-flow.sh
-./test-flow.sh
 ```
 
 ---
@@ -466,17 +546,26 @@ src/
 
 ### Cambiar Proveedor LLM
 
-```bash
+```env
 # En .env
 LLM_PROVIDER=openrouter
 OPENROUTER_API_KEY=sk-or-...
 OPENROUTER_MODEL=anthropic/claude-3-opus
 ```
 
+### Usar S3 Externo (Filebase / AWS / MinIO / Cloudflare R2)
+
+En lugar de RustFS local, edita `.env`:
+
+```env
+S3_ENDPOINT=https://s3.filebase.com
+S3_ACCESS_KEY=tu_access_key
+S3_SECRET_KEY=tu_secret_key
+```
+
 ### Ajustar Scoring Policy
 
-```bash
-# En .env (valores por defecto mostrados)
+```env
 SCORING_WEIGHT_SKILLS=0.5
 SCORING_WEIGHT_EXPERIENCE=0.3
 SCORING_WEIGHT_EDUCATION=0.2
@@ -492,11 +581,10 @@ En `recruiter.module.ts`, reemplaza `MemorySaver` por `PostgresSaver`:
 ```typescript
 import { PostgresSaver } from '@langchain/langgraph-checkpoint-postgres';
 
-// En factory de EVALUATION_GRAPH:
 const checkpointer = new PostgresSaver({
   connectionString: configService.get('DATABASE_URL'),
 });
-await checkpointer.setup(); // Ejecutar una vez al inicio
+await checkpointer.setup();
 ```
 
 ---
@@ -505,12 +593,50 @@ await checkpointer.setup(); // Ejecutar una vez al inicio
 
 | Problema | Solución |
 |----------|----------|
-| `Connection refused` Redis | Verifica `docker-compose up -d` y `REDIS_HOST/PORT` |
-| `relation "evaluations" does not exist` | Ejecuta `npx drizzle-kit migrate` o `push` |
-| `pgvector extension not found` | Usa imagen `pgvector/pgvector:pg16` |
-| `LLM rate limit` | Revisa cuotas de tu proveedor; ajusta `attempts/backoff` en queue AI_RECRUITER |
-| `File not found in S3` | Verifica que el `s3Key` coincida con el subido; comprueba `S3_ENDPOINT` |
-| Build errors zod | Usa `npm install --legacy-peer-deps` |
+| `Connection refused` Redis/Postgres | `docker-compose up -d` y espera healthchecks |
+| `relation "evaluations" does not exist` | `docker-compose exec app npx drizzle-kit push` |
+| `pgvector extension not found` | Imagen `pgvector/pgvector:pg16` ya la incluye |
+| `LLM rate limit` | Revisa cuotas; ajusta `attempts/backoff` en queue AI_RECRUITER |
+| `File not found in S3` | Verifica bucket `ai-recruiter` existe en RustFS console |
+| `RustFS healthcheck failing` | Espera `start_period: 40s`; revisa `docker-compose logs rustfs` |
+| `Permission denied` RustFS volumes | `volume-permission-helper` corre antes; si falla: `docker-compose restart volume-permission-helper rustfs` |
+| Build errors zod | `npm install --legacy-peer-deps` en local; Dockerfile ya lo maneja |
+
+---
+
+## 🔧 Comandos Útiles Docker Compose
+
+```bash
+# Levantar todo en background
+docker-compose up -d --build
+
+# Ver logs en tiempo real
+docker-compose logs -f
+
+# Ver logs de un servicio específico
+docker-compose logs -f app
+docker-compose logs -f rustfs
+docker-compose logs -f postgres
+
+# Reiniciar un servicio
+docker-compose restart app
+
+# Bajar todo (mantiene volúmenes)
+docker-compose down
+
+# Bajar todo Y eliminar volúmenes (¡CUIDADO: borra datos!)
+docker-compose down -v
+
+# Ejecutar comando en contenedor app
+docker-compose exec app npx drizzle-kit push
+docker-compose exec app npx drizzle-kit studio
+
+# Entrar a shell del contenedor
+docker-compose exec app sh
+
+# Ver estado de salud
+docker-compose ps
+```
 
 ---
 
@@ -529,4 +655,4 @@ UNLICENSED — Uso interno.
 
 ---
 
-**Desarrollado con** ❤️ **usando NestJS, LangGraph, BullMQ, Drizzle ORM y pgvector.**
+**Desarrollado con** ❤️ **usando NestJS, LangGraph, BullMQ, Drizzle ORM, pgvector y RustFS.**

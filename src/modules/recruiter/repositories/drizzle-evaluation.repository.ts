@@ -4,7 +4,7 @@ import { drizzle, PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { eq, desc } from 'drizzle-orm';
 import * as evaluationsSchema from '../../../db/schema/evaluations';
-import { IEvaluationRepository, EVALUATION_REPOSITORY, EvaluationInput, EvaluationOutput } from '../interfaces/evaluation.repository.interface';
+import { IEvaluationRepository, EvaluationInput, EvaluationOutput } from '../interfaces/evaluation.repository.interface';
 import { RecruiterOutput } from '../state/recruiter.state';
 
 @Injectable()
@@ -27,7 +27,6 @@ export class DrizzleEvaluationRepository implements IEvaluationRepository {
           cvText: input.cvText,
           jobDescription: input.jobDescription,
           jobTitle: input.jobTitle,
-          cvEmbedding: input.cvEmbedding,
           scores: input.scores,
           recommendation: input.recommendation,
           matchDetails: input.matchDetails,
@@ -72,12 +71,6 @@ export class DrizzleEvaluationRepository implements IEvaluationRepository {
     return records.map(r => this.mapRecord(r));
   }
 
-  async searchByEmbedding(embedding: number[], limit: number = 10): Promise<EvaluationOutput[]> {
-    // Fase 5: búsqueda semántica con pgvector
-    // Implementar con cosine distance cuando se necesite
-    throw new Error('Not implemented yet - Fase 5');
-  }
-
   private mapRecord(record: evaluationsSchema.Evaluation): EvaluationOutput {
     return {
       id: record.id,
@@ -86,7 +79,6 @@ export class DrizzleEvaluationRepository implements IEvaluationRepository {
       cvText: record.cvText,
       jobDescription: record.jobDescription,
       jobTitle: record.jobTitle ?? undefined,
-      cvEmbedding: record.cvEmbedding as number[] | undefined,
       scores: record.scores as RecruiterOutput['scores'],
       recommendation: record.recommendation as RecruiterOutput['recommendation'],
       matchDetails: record.matchDetails as RecruiterOutput['match'],

@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, jsonb, timestamp, vector } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, jsonb, timestamp } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 export const evaluations = pgTable('evaluations', {
@@ -8,8 +8,6 @@ export const evaluations = pgTable('evaluations', {
   cvText: text('cv_text').notNull(),
   jobDescription: text('job_description').notNull(),
   jobTitle: varchar('job_title', { length: 255 }),
-  // pgvector para búsqueda semántica futura de CVs por similitud
-  cvEmbedding: vector('cv_embedding', { dimensions: 1536 }),
   scores: jsonb('scores').notNull(),
   recommendation: jsonb('recommendation').notNull(),
   matchDetails: jsonb('match_details').notNull(),
